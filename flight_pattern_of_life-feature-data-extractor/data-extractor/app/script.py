@@ -1,0 +1,305 @@
+# !/usr/bin/env python3
+import logging
+import math
+import os
+import pathlib
+import time
+import glob
+
+from minio import Minio
+import psycopg
+import pandas as pd
+import numpy as np
+
+import re
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
+dir_dataset = "/tmp/dataset"
+
+
+def generate_DC_polygon() -> list():
+    center_lat = 38 + 51 / 60 + 34 / 3600  # Convert DMS to decimal degrees
+    center_lon = -(77 + 2 / 60 + 11 / 3600)  # Convert DMS to decimal degrees
+    radius_nm = 30  # Radius in nautical miles
+    num_sides = 8  # Octagon
+
+    return generate_polygon(center_lat, center_lon, radius_nm, num_sides)
+
+
+def record_to_coordinate_list(linestring, bool_return_x_y=True):
+    # Extract coordinates from LINESTRING using regex
+    pattern = r"LINESTRING\((.+)\)"
+    match = re.search(pattern, linestring)
+    if not match:
+        raise ValueError(f"Invalid LINESTRING format: {linestring}")
+
+    coordinates_str = match.group(1)
+    coordinate_pairs = [pair.split() for pair in coordinates_str.split(",")]
+
+    if bool_return_x_y:
+        # ***   LINSTRING FORMAT IS WIERD    |    LONG / LAT IS HOW IT STORES DATA   ***
+        y = [float(pair[0]) for pair in coordinate_pairs]
+        x = [float(pair[1]) for pair in coordinate_pairs]
+        return x, y
+    else:
+        return coordinate_pairs
+
+
+def generate_polygon(center_lat, center_lon, radius_nm, num_sides):
+    # Constants
+    radius_km = radius_nm * 1.852  # Convert nautical miles to kilometers
+    earth_radius_km = 6371.0  # Earth's radius in kilometers
+
+    # Convert center coordinates to radians
+    center_lat_rad = math.radians(center_lat)
+    center_lon_rad = math.radians(center_lon)
+
+    # Angle between vertices in radians
+    angle = 2 * math.pi / num_sides
+
+    # Generate polygon vertices
+    polygon_coords = []
+    for i in range(num_sides):
+        theta = i * angle
+        vertex_lat_rad = math.asin(
+            math.sin(center_lat_rad) * math.cos(radius_km / earth_radius_km)
+            + math.cos(center_lat_rad)
+            * math.sin(radius_km / earth_radius_km)
+            * math.cos(theta)
+        )
+        vertex_lon_rad = center_lon_rad + math.atan2(
+            math.sin(theta)
+            * math.sin(radius_km / earth_radius_km)
+            * math.cos(center_lat_rad),
+            math.cos(radius_km / earth_radius_km)
+            - math.sin(center_lat_rad) * math.sin(vertex_lat_rad),
+        )
+
+        # Convert radians back to degrees
+        vertex_lat = math.degrees(vertex_lat_rad)
+        vertex_lon = math.degrees(vertex_lon_rad)
+        polygon_coords.append((vertex_lat, vertex_lon))
+
+    # Close the polygon by repeating the first vertex
+    polygon_coords.append(polygon_coords[0])
+
+    return polygon_coords
+
+
+def fetch_records(
+    lat_long_bounds,
+    output_dir,
+    batch_size=50,
+    max_records=50,
+    offset=0,
+    conn_string=None,
+):
+    """
+    Gets records and stores them as parquet files in desired output directory
+    """
+
+    db_username = os.getenv("PG_USER")
+    db_password = os.getenv("PG_PASS")
+    db_hostname = os.getenv("PG_HOST")
+    db_port = os.getenv("PG_PORT")
+    db_name = os.getenv("PG_DBNAME")
+
+    if conn_string is None:
+        conn_string = f"postgresql://{db_username}:{db_password}@{db_hostname}:{db_port}/{db_name}"
+
+    bool_rectangle_fence = False
+    if isinstance(lat_long_bounds, dict):
+        bool_rectangle_fence = True
+        long_low = lat_long_bounds["long_low"]
+        lat_low = lat_long_bounds["lat_low"]
+        long_high = lat_long_bounds["long_high"]
+        lat_high = lat_long_bounds["lat_high"]
+    else:
+        polygon_wkt = (
+            "POLYGON(("
+            + ", ".join(f"{lon} {lat}" for lat, lon in lat_long_bounds)
+            + "))"
+        )
+
+    # create output directory
+    pathlib.Path(output_dir).mkdir(parents=True, exist_ok=True)
+
+    total_records = 0
+    records_list = []
+
+    bad_list = []
+
+    # Connect to the existing database
+    with psycopg.connect(conn_string) as conn:
+        while total_records < max_records:
+
+            # GOOD COMMAND BUT GIVES REPEATED UUID DATAFRAMES / FLIGHTPATHS
+            if bool_rectangle_fence:
+                command = f"""
+                WITH bounded_entities AS (
+                    SELECT entity_id_uuid
+                    FROM entity_enriched
+                    WHERE ST_Intersects(
+                        geometry,
+                        ST_MakeEnvelope({long_low}, {lat_low}, {long_high}, {lat_high}, 4326)
+                    )
+                    AND geometry IS NOT NULL
+                    GROUP BY entity_id_uuid
+                )
+                SELECT 
+                    entity_id_uuid, 
+                    ST_AsText(ST_MakeLine(geometry ORDER BY dtg)) AS full_flightpath, 
+                    array_agg(position_altitude_wgs84_meters ORDER BY dtg) AS altitudes, 
+                    array_agg(dtg ORDER BY dtg) AS timestamps
+                FROM entity_enriched
+                WHERE entity_id_uuid IN (SELECT entity_id_uuid FROM bounded_entities)
+                AND geometry IS NOT NULL
+                GROUP BY entity_id_uuid
+                LIMIT {batch_size} OFFSET {offset};
+                """
+
+            else:
+                command = f"""
+                WITH bounded_entities AS (
+                    SELECT entity_id_uuid
+                    FROM entity_enriched
+                    WHERE ST_Intersects(
+                        geometry,
+                        ST_GeomFromText('{polygon_wkt}', 4326)
+                    )
+                    AND geometry IS NOT NULL
+                    GROUP BY entity_id_uuid
+                )
+                SELECT 
+                    entity_id_uuid, 
+                    ST_AsText(ST_MakeLine(geometry ORDER BY dtg)) AS full_flightpath, 
+                    array_agg(position_altitude_wgs84_meters ORDER BY dtg) AS altitudes, 
+                    array_agg(dtg ORDER BY dtg) AS timestamps
+                FROM entity_enriched
+                WHERE entity_id_uuid IN (SELECT entity_id_uuid FROM bounded_entities)
+                AND geometry IS NOT NULL
+                GROUP BY entity_id_uuid
+                LIMIT {batch_size} OFFSET {offset};
+                """
+
+            # Open a cursor to perform database operations
+            with conn.cursor() as cur:
+                # Query the database and obtain data as Python objects.
+                cur.execute(command)
+                results_ = cur.fetchall()
+
+                # process each record so everything is in the correct format
+                for record in results_:
+                    uuid, linestring, position_altitude_wgs84_meters, datetime_list = (
+                        record
+                    )
+
+                    x, y = record_to_coordinate_list(linestring, bool_return_x_y=True)
+
+                    data = {
+                        "uuid": [uuid] * len(x),
+                        "Latitude": x,
+                        "Longitude": y,
+                        "Altitude": position_altitude_wgs84_meters,
+                        "datetime": datetime_list,
+                    }
+
+                    filename = os.path.join(output_dir, f"{uuid}.parquet")
+
+                    len_array = np.array([len(val) for key, val in data.items()])
+                    all_same_len = np.all(len_array == len_array[0])
+
+                    uuid_list = os.listdir(output_dir)
+
+                    if all_same_len:
+
+                        if f"{uuid}.parquet" not in uuid_list:
+                            df = pd.DataFrame(data)
+                            # Save to Parquet
+                            df.to_parquet(filename, index=False)
+                            logging.info(f"Saved {filename}")
+                        else:
+                            logging.info(
+                                f"file with uuid {uuid} already present {filename}"
+                            )
+
+                    else:
+                        bad_list.append(uuid)
+                        logging.info(f"bad uuid: {uuid}")
+
+                total_records += len(results_)
+
+                # Check if we got fewer records than the batch size or reached max_records
+                if len(results_) < batch_size or total_records >= max_records:
+                    logging.info(
+                        len(results_), batch_size, total_records, max_records
+                    )  # 0 50 0 150
+                    break
+
+                # Update the offset for the next batch
+                offset += batch_size
+
+
+def upload_local_directory_to_minio(
+    minio_client: Minio, local_path: str, bucket_name: str
+):
+    assert os.path.isdir(local_path)
+
+    for local_file in glob.glob(local_path + "/**"):
+        local_file = local_file.replace(os.sep, "/")
+        if not os.path.isfile(local_file):
+            upload_local_directory_to_minio(minio_client, local_file, bucket_name)
+        else:
+            logging.info(f"Uploading {local_file}...")
+            remote_path = os.path.join(local_file[1 + len(local_path) :])
+            remote_path = remote_path.replace(os.sep, "/")
+            minio_client.fput_object(bucket_name, "DC/Flightpath/" + remote_path, local_file)
+
+
+def upload_to_minio():
+    logging.info("Uploading to minio bucket.")
+
+    client = Minio(
+        endpoint=os.environ.get("MINIO_ENDPOINT"),
+        access_key=os.environ.get("MINIO_ACCESS_KEY"),
+        secret_key=os.environ.get("MINIO_SECRET_KEY"),
+        secure=False,
+    )
+
+    upload_local_directory_to_minio(client, "/tmp/dataset", "dataset")
+
+    logging.info("Upload complete!")
+
+
+def main():
+    logging.info("Job started.")
+
+    batch_size = 1000
+    max_records = 150_000
+
+    polygon_coords = generate_DC_polygon()
+
+    # DC Special zone: polygon_coords (circle centered in DC)
+    circle_coords = polygon_coords + [polygon_coords[0]]
+    output_dir = dir_dataset + "/DC/Flightpath/"
+
+    os.makedirs(output_dir, exist_ok=True)
+
+    logging.info(f"Before fetch file count: {len(os.listdir(output_dir))}")
+    fetch_records(
+        circle_coords, output_dir, batch_size=batch_size, max_records=max_records
+    )
+    logging.info(f"After fetch file count: {len(os.listdir(output_dir))}")
+
+    upload_to_minio()
+
+    logging.info("Job completed successfully!")
+
+
+if __name__ == "__main__":
+    # main()
+    upload_to_minio()
+    time.sleep(600)

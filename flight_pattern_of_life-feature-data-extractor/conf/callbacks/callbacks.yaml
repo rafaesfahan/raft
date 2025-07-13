@@ -1,0 +1,69 @@
+
+
+callbacks:
+  - _target_: pytorch_lightning.callbacks.ModelCheckpoint
+    #dirpath: "${all_models_dir}/${experiment_name}/${get_experiment_name_base_on_existing_experiments(${all_models_dir})}/model_checkpoints/"
+    ##dirpath: "${all_models_dir}/${experiment_name}/${get_experiment_name_base_on_existing_experiments:${all_models_dir}}/model_checkpoints/"
+    dirpath: ${model_dir}/model_checkpoints/
+    save_last: true
+    every_n_train_steps: 5000
+    save_top_k: -1
+
+
+
+
+
+
+# callbacks:
+#   - _target_: pytorch_lightning.callbacks.ModelCheckpoint
+#     dirpath: "${all_models_dir}/${experiment_name}/models/"
+#     save_last: true
+#     every_n_train_steps: 5000
+#     save_top_k: -1
+
+
+
+# callbacks: ${callbacks_list}
+
+# callbacks_list:
+#   - _target_: pytorch_lightning.callbacks.ModelCheckpoint
+#     dirpath: "${all_models_dir}/${experiment_name}/models/"
+#     save_last: true
+#     every_n_train_steps: 5000
+#     save_top_k: -1
+
+  # Add more callbacks here as needed
+  # - _target_: some.other.Callback
+  #   param1: value1
+  #   param2: value2
+
+
+
+
+# callbacks:
+#   model_checkpoint:
+#     _target_: pytorch_lightning.callbacks.ModelCheckpoint
+#     dirpath: "${all_models_dir}/${experiment_name}/models/"
+#     save_last: true
+#     every_n_train_steps: 5000
+#     save_top_k: -1
+
+
+# model_checkpoint:
+#   _target_: pytorch_lightning.callbacks.ModelCheckpoint
+#   dirpath: "${all_models_dir}/${experiment_name}/models/"
+#   save_last: true
+#   every_n_train_steps: 5000
+#   save_top_k: -1
+
+# callbacks:
+#   - ${model_checkpoint}
+#   # Add more callbacks here as needed
+
+
+# model_checkpoint:
+#   _target_: pytorch_lightning.callbacks.ModelCheckpoint
+#   dirpath: "${all_models_dir}/${experiment_name}/models/"
+#   save_last: true
+#   every_n_train_steps: 5_000
+#   save_top_k: -1

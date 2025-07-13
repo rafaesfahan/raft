@@ -1,0 +1,3 @@
+mlflow:
+  _target_: null 
+  set_tracking_uri: "http://df-mlflow-registry.mlflow:5000" # "http://localhost:5000"

@@ -1,0 +1,36 @@
+
+# @package _global_
+experiment_name: ORDINARY_RUN
+
+defaults: 
+  - override /network: simple_trasformer #simple_lstm
+
+trainer:
+  trainer:
+    val_check_interval: 15_000 #10_000
+    max_steps: 150_000
+    accelerator: "mps"  #"cpu" #"mps"   ##########
+
+datamodule:
+  datamodule:
+    all_flight_dataframes_dict: '/Users/aleksandranikevich/Desktop/AircraftTrajectory/data/Individual_Flights/'
+    break_after: null
+
+    num_input_rows_total: 500 #1000
+    min_rows_input: 500
+    num_output_rows: 10    #50
+
+    num_workers: 4    ################
+
+
+mlflow:
+  mlflow:
+    set_tracking_uri: "http://localhost:5000"
+
+model:
+  model:
+    max_num_val_maps: 10
+    learning_rate: 1.0e-4
+
+
+

@@ -1,0 +1,11 @@
+coordinate_system:
+  coordinate_system_enum: LatLongCoordinates #${coordinate_system.coordinate_system.coordinate_system_enum}
+  # auxiliary_input_channels:
+  #   - diff_time
+  #   - flight_course_corrected
+  #   - flight_course_unknown
+  auxiliary_input_channels: []
+  auxiliary_output_channels: []
+
+  in_channels: ${calculate_in_channels:${coordinate_system.coordinate_system.coordinate_system_enum},${coordinate_system.coordinate_system.auxiliary_input_channels},${coordinate_system.coordinate_system.auxiliary_output_channels}}
+  out_channels: ${calculate_out_channels:${coordinate_system.coordinate_system.coordinate_system_enum},${coordinate_system.coordinate_system.auxiliary_input_channels},${coordinate_system.coordinate_system.auxiliary_output_channels}}

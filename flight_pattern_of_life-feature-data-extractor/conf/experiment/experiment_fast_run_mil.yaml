@@ -1,0 +1,22 @@
+
+# @package _global_
+experiment_name: FAST_RUN
+trainer:
+  trainer:
+    val_check_interval: 150
+    max_steps: 200
+    accelerator: "cpu" #"cpu"
+
+datamodule:
+  datamodule:
+    all_flight_dataframes_dict: /home/jovyan/dataset/DC/Flightpath/
+    break_after: 30
+
+model:
+  model:
+    max_num_val_maps: -1
+
+
+mlflow:
+  mlflow:
+    set_tracking_uri: "http://df-mlflow-registry.mlflow:5000"

@@ -1,0 +1,42 @@
+  apiVersion: "serving.kserve.io/v1beta1"
+  kind: "InferenceService"
+  metadata:
+    name: "aircraft-trajectory"
+    namespace: demo
+  spec:
+    predictor:
+      containers:
+        - image: >-
+            ghcr.io/raft-tech/kserve-example/aircraft-trajectory:0.1.0
+          name: kserve-container-dev
+          env:
+            - name: MODEL_FILE
+              value: "models_jit2/scripted_model.pt"
+            - name: MINIO_ENDPOINT
+              value: "minio-service.kubeflow:9000"
+            - name: MINIO_ACCESS_KEY
+              value: "minio"
+            - name: MINIO_SECRET_KEY
+              value: "minio123"
+            - name: MINIO_BUCKET
+              value: "aanikevich"
+            - name: MODEL_REGISTRY_URL
+              value: "http://k8s-demo-raftmode-09297dbbc5-1715e53fecdcc055.elb.us-east-1.amazonaws.com:8000"
+            - name: PROTOCOL
+              value: "v2"
+            - name: WORKERS
+              value: "1"
+            - name: PYTHONUNBUFFERED
+              value: "1"
+      resources:
+        limits:
+          cpu: '1'
+          memory: 8Gi
+          nvidia.com/gpu: "1"
+        requests:
+          cpu: '1'
+          memory: 8Gi
+          nvidia.com/gpu: "1"
+      imagePullSecrets:
+        - name: ghcr-pat
+      imagePullPolicy: Always

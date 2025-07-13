@@ -1,0 +1,7 @@
+lightning_logs
+mlruns
+mlartifacts
+models
+notebooks
+outputs
+tmp

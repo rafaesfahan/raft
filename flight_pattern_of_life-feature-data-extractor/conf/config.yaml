@@ -1,0 +1,48 @@
+defaults:
+  - coordinate_system: coordinate_system
+  - dataset: dataset
+  - datamodule: datamodule
+  - model: model
+  - network: simple_cnn #simple_trasformer
+  - callbacks: callbacks
+  - logger: tensorboard_logger
+  - mlflow: mlflow
+  - trainer: trainer
+  - jit_config: jit_config
+  - eval_config: eval_config
+  - experiment: experiment_cnn
+
+  - override hydra/hydra_logging: disabled
+  - override hydra/job_logging: disabled
+
+
+hydra:
+  output_subdir: null
+  run:
+    dir: .
+  sweep:
+    dir: .  # Set sweep directory to current directory
+
+
+
+
+
+
+bool_normalize_dataset_wide: false #true
+quantile_normalization_min: 0.05  # set 0.0 for min normalization within the entire dataset
+quantile_normalization_max: 0.95  # set 1.0 for max normalization within the entire dataset
+limit_samples: 300
+
+
+all_models_dir: "models" #"/Users/aleksandranikevich/Desktop/AircraftTrajectory/flight_pattern_of_life-main/models"
+experiment_name: TestPipeline #TestHydra
+#model_dir: "${all_models_dir}/${experiment_name}/"
+experiment_dir: "${all_models_dir}/${experiment_name}"
+##model_dir: "${all_models_dir}/${experiment_name}/${get_experiment_name_base_on_existing_experiments:${all_models_dir}}/"
+model_dir: "${experiment_dir}/${get_experiment_name_base_on_existing_experiments:${experiment_dir}}/"
+
+
+
+
+
+

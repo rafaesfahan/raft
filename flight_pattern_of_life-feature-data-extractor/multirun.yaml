@@ -1,0 +1,240 @@
+hydra:
+  run:
+    dir: .
+  sweep:
+    dir: .
+    subdir: ${hydra.job.num}
+  launcher:
+    _target_: hydra._internal.core_plugins.basic_launcher.BasicLauncher
+  sweeper:
+    _target_: hydra._internal.core_plugins.basic_sweeper.BasicSweeper
+    max_batch_size: null
+    params: null
+  help:
+    app_name: ${hydra.job.name}
+    header: '${hydra.help.app_name} is powered by Hydra.
+
+      '
+    footer: 'Powered by Hydra (https://hydra.cc)
+
+      Use --hydra-help to view Hydra specific help
+
+      '
+    template: '${hydra.help.header}
+
+      == Configuration groups ==
+
+      Compose your configuration from those groups (group=option)
+
+
+      $APP_CONFIG_GROUPS
+
+
+      == Config ==
+
+      Override anything in the config (foo.bar=value)
+
+
+      $CONFIG
+
+
+      ${hydra.help.footer}
+
+      '
+  hydra_help:
+    template: 'Hydra (${hydra.runtime.version})
+
+      See https://hydra.cc for more info.
+
+
+      == Flags ==
+
+      $FLAGS_HELP
+
+
+      == Configuration groups ==
+
+      Compose your configuration from those groups (For example, append hydra/job_logging=disabled
+      to command line)
+
+
+      $HYDRA_CONFIG_GROUPS
+
+
+      Use ''--cfg hydra'' to Show the Hydra config.
+
+      '
+    hydra_help: ???
+  hydra_logging:
+    version: 1
+    root:
+      level: ERROR
+    disable_existing_loggers: true
+  job_logging:
+    version: 1
+    root:
+      level: ERROR
+    disable_existing_loggers: true
+  env: {}
+  mode: MULTIRUN
+  searchpath: []
+  callbacks: {}
+  output_subdir: null
+  overrides:
+    hydra:
+    - hydra.mode=MULTIRUN
+    task:
+    - experiment=local_simple_cnn,local_simple_lstm,local_simple_transformer
+  job:
+    name: main
+    chdir: null
+    override_dirname: experiment=local_simple_cnn,local_simple_lstm,local_simple_transformer
+    id: ???
+    num: ???
+    config_name: config
+    env_set: {}
+    env_copy: []
+    config:
+      override_dirname:
+        kv_sep: '='
+        item_sep: ','
+        exclude_keys: []
+  runtime:
+    version: 1.3.2
+    version_base: '1.3'
+    cwd: /Users/aleksandranikevich/Desktop/AircraftTrajectory/REPO/flight_pattern_of_life
+    config_sources:
+    - path: hydra.conf
+      schema: pkg
+      provider: hydra
+    - path: /Users/aleksandranikevich/Desktop/AircraftTrajectory/REPO/flight_pattern_of_life/conf
+      schema: file
+      provider: main
+    - path: ''
+      schema: structured
+      provider: schema
+    output_dir: ???
+    choices:
+      experiment: experiment_cnn
+      eval_config: eval_config
+      jit_config: jit_config
+      trainer: trainer
+      mlflow: mlflow
+      logger: tensorboard_logger
+      callbacks: callbacks
+      network: simple_cnn
+      model: model
+      datamodule: datamodule
+      dataset: dataset
+      coordinate_system: coordinate_system
+      hydra/env: default
+      hydra/callbacks: null
+      hydra/job_logging: disabled
+      hydra/hydra_logging: disabled
+      hydra/hydra_help: default
+      hydra/help: default
+      hydra/sweeper: basic
+      hydra/launcher: basic
+      hydra/output: default
+  verbose: false
+coordinate_system:
+  coordinate_system:
+    coordinate_system_enum: LatLongCoordinates
+    auxiliary_input_channels: []
+    auxiliary_output_channels: []
+    in_channels: ${calculate_in_channels:${coordinate_system.coordinate_system.coordinate_system_enum},${coordinate_system.coordinate_system.auxiliary_input_channels},${coordinate_system.coordinate_system.auxiliary_output_channels}}
+    out_channels: ${calculate_out_channels:${coordinate_system.coordinate_system.coordinate_system_enum},${coordinate_system.coordinate_system.auxiliary_input_channels},${coordinate_system.coordinate_system.auxiliary_output_channels}}
+dataset:
+  dataset:
+    name: CIFAR10
+    data_path: /path/to/cifar10
+    batch_size: 32
+    num_workers: 4
+datamodule:
+  datamodule:
+    _target_: datamodule.Datamodule
+    all_flight_dataframes_dict: /Users/aleksandranikevich/Desktop/AircraftTrajectory/data/Individual_Flights/
+    num_input_rows_total: 100
+    min_rows_input: 100
+    num_output_rows: 5
+    coordinate_system_enum: ${coordinate_system.coordinate_system.coordinate_system_enum}
+    auxiliary_input_channels: ${coordinate_system.coordinate_system.auxiliary_input_channels}
+    auxiliary_output_channels: ${coordinate_system.coordinate_system.auxiliary_output_channels}
+    train_prop: 0.8
+    batch_size: 32
+    num_workers: 4
+    pin_memory: true
+    break_after: null
+    limit_dataset: null
+model:
+  model:
+    _target_: model.FlightModel
+    model: ${network.network}
+    coordinate_system_enum: ${coordinate_system.coordinate_system.coordinate_system_enum}
+    loss_fn: mse
+    optimizer: null
+    max_num_val_maps: 5
+    n_future_timesteps: 10
+    mean: null
+    std: null
+    learning_rate: 0.0001
+  learning_rate: 1.0e-07
+network:
+  network:
+    _target_: net.SimpleNet
+    in_channels: ${coordinate_system.coordinate_system.in_channels}
+    out_channels: ${coordinate_system.coordinate_system.out_channels}
+    intermediate_channels: 64
+    num_res_blocks: 8
+    num_output_rows: ${datamodule.datamodule.num_output_rows}
+    dilation: 3
+    kernel_size: 9
+    norm_type: instance
+    stride: 1
+    bias: true
+    normalize_inside_of_network: false
+callbacks:
+  callbacks:
+  - _target_: pytorch_lightning.callbacks.ModelCheckpoint
+    dirpath: ${model_dir}/model_checkpoints/
+    save_last: true
+    every_n_train_steps: 5000
+    save_top_k: -1
+logger:
+  logger:
+    _target_: pytorch_lightning.loggers.TensorBoardLogger
+    save_dir: ${model_dir}/
+    sub_dir: tmp/tensorboard_logs/
+mlflow:
+  mlflow:
+    _target_: null
+    set_tracking_uri: http://df-mlflow-registry.mlflow:5000
+trainer:
+  trainer:
+    _target_: pytorch_lightning.Trainer
+    enable_checkpointing: true
+    max_steps: 200000
+    callbacks: ${callbacks.callbacks}
+    logger: ${logger.logger}
+    val_check_interval: 2000
+    limit_val_batches: 1
+    log_every_n_steps: 20
+    accelerator: mps
+    devices: 1
+    gradient_clip_val: 0.5
+jit_config:
+  jit_config:
+    torch_jit_save_dir: jit_models/
+eval_config:
+  eval_config:
+    desired_keys: null
+    num_predict_steps: 10
+    break_after_index: 3
+bool_normalize_dataset_wide: false
+quantile_normalization_min: 0.05
+quantile_normalization_max: 0.95
+limit_samples: 300
+all_models_dir: models
+experiment_name: TestPipeline
+experiment_dir: ${all_models_dir}/${experiment_name}
+model_dir: ${experiment_dir}/${get_experiment_name_base_on_existing_experiments:${experiment_dir}}/

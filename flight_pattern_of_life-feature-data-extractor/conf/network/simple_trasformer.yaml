@@ -1,0 +1,16 @@
+
+network: 
+  _target_: net_transformer.SimpleTimeSeriesTransformer
+  input_num_channels: ${coordinate_system.coordinate_system.in_channels}
+  input_num_timesteps: ${datamodule.datamodule.min_rows_input}
+  num_transformer_blocks_stacked: 4
+  output_num_channels: ${coordinate_system.coordinate_system.out_channels}
+  output_num_timesteps: ${datamodule.datamodule.num_output_rows}
+  hidden_dim: 64
+  nhead: 8
+
+  normalize_inside_of_network: False
+  norm_type: 'layer'
+
+
+# input_num_channels, input_num_timesteps, num_transformer_blocks_stacked, output_num_channels, output_num_timesteps, hidden_dim, nhead=8, normalize_inside_of_network=True, norm_type='layer'

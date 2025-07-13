@@ -1,0 +1,12 @@
+trainer:
+  _target_: pytorch_lightning.Trainer
+  enable_checkpointing: true
+  max_steps: 200_000  # replace with your specific max_steps
+  callbacks: ${callbacks.callbacks}
+  logger: ${logger.logger}  # or your specific logger configuration
+  val_check_interval: 2_000  # or your specific val_check_interval
+  limit_val_batches: 1  # or your specific limit_val_batches
+  log_every_n_steps: 20  # replace with your log_every_n_steps
+  accelerator: "cpu" #"gpu"  # replace with your specific accelerator
+  devices: 1
+  gradient_clip_val: 0.5

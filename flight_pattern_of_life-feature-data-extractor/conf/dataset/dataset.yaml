@@ -1,0 +1,7 @@
+# DUMMY FILE FOR NOW
+
+dataset:
+  name: CIFAR10
+  data_path: /path/to/cifar10
+  batch_size: 32
+  num_workers: 4

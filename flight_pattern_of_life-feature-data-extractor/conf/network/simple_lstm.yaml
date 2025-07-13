@@ -1,0 +1,15 @@
+
+
+# input_channels, num_layers, output_channels, hidden_size=64, conv_out_channels=32, kernel_size=3, out_timesteps=10, normalize_inside_of_network=True, norm_type='layer'
+network: 
+  _target_: net_lstm.SimpleLSTM
+  input_channels: ${coordinate_system.coordinate_system.in_channels}
+  output_channels: ${coordinate_system.coordinate_system.out_channels}
+  num_layers: 12
+  hidden_size: 64
+  conv_out_channels: 32
+  kernel_size: 3
+  out_timesteps: ${datamodule.datamodule.num_output_rows}
+
+  normalize_inside_of_network: False
+  norm_type: 'instance'    # 'batch'   'layer'   'instance'

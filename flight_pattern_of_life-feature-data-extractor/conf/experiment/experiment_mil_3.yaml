@@ -1,0 +1,18 @@
+
+# @package _global_
+experiment_name: FAST_RUN
+trainer:
+  trainer:
+    val_check_interval: 20_000
+    max_steps: 40_000
+    accelerator: "cpu"
+
+datamodule:
+  datamodule:
+    all_flight_dataframes_dict: /home/jovyan/Dataset/DC/Flightpath/
+    break_after: null
+    limit_dataset: 0.9
+
+model:
+  model:
+    max_num_val_maps: -1

@@ -1,0 +1,17 @@
+tensorboard
+lightning
+torch 
+torchvision 
+torchaudio
+folium
+selenium
+hydra-core 
+pytorch-lightning 
+omegaconf 
+scipy 
+matplotlib 
+numpy 
+pandas 
+mlflow
+kfp==2.9.0
+boto3

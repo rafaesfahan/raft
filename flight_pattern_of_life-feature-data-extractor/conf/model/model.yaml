@@ -1,0 +1,11 @@
+model:
+  _target_: model.FlightModel
+  model: ${network.network}
+  coordinate_system_enum: ${coordinate_system.coordinate_system.coordinate_system_enum}
+  loss_fn: "mse"
+  optimizer: null
+  max_num_val_maps: 5
+  n_future_timesteps: 10
+  mean: null 
+  std: null 
+  learning_rate: 1.0e-4

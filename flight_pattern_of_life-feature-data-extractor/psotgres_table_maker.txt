@@ -1,0 +1,115 @@
+geomesa.sfts.consolidated_flight_plan_geo = {
+  user-data = ${consolidated_flight_plan_geo.base.user-data}
+  attributes = ${consolidated_flight_plan_geo.base.attributes}
+}
+
+consolidated_flight_plan_geo.base = {
+  user-data = {
+    geomesa.indices.enabled = "z3,attr:uuid:dtg" # Only used for NoSQL backends
+    geomesa.table.sharing = "false"
+    pg.partitions.interval.hours = "24"
+    pg.partitions.max = "30"
+  }
+  attributes = [
+    # SecurityInformation
+    { name = "classification", type = "String" }
+    { name = "owner_producer", type = "String" }
+    # MessageHeader
+    { name = "mode", type = "String" }
+    { name = "system_id_uuid",  type = "String"}
+    { name = "system_id_desc_label", type = "String" }
+    { name = "message_header_ts", type = "Date" }
+    { name = "service_id_uuid",  type = "String" }
+    { name = "service_id_desc_label", type = "String" }
+    # ObjectState
+    { name = "object_state", type = "String" }
+    # MessageData
+    { name = "uuid", type = "String", index = true}
+    { name = "applicability_uuid", type = "String"}
+    { name = "parts_route_type", type = "String"}
+    { name = "route_detailed", type = "Boolean"}
+    { name = "first_route_path_uuid", type = "String"}
+    { name = "route_projection", type = "String"}
+    { name = "path_uuid", type = "String" }
+    { name = "path_type", type = "String"}
+    { name = "airline", type= "String"}
+    { name = "for_planning_use_only", type = "Boolean"}
+    # Route LineString Geometry
+    { name = "geometry", type = "LineString", srid = 4326, default = true, index = true}
+    { name = "geometry_axis_swap", type = "LineString", srid = 4326}
+    { name = "dtg", type = "Date", default = true, index = true }
+    # Identity
+    { name = "specific_vehicle_type", type = "String", index=true}
+    { name = "specific_vehicle_confidence", type = "Double"}
+    { name = "identity_ts", type = "Date"}
+    # Departure Airfield
+    { name = "departure_airfield_id", type="String"}
+    { name = "departure_identity_ref_system_id", type="String"}
+    { name = "departure_observation_ts", type = "Date"}
+    { name= "departure_icao_code", type = "String" }
+    # Arrival Airfield
+    { name = "arrival_airfield_id", type="String"}
+    { name = "arrival_identity_ref_system_id", type="String"}
+    { name = "arrival_observation_ts", type = "Date"}
+    { name = "arrival_icao_code", type = "String" }
+  ]
+}
+
+# Converter configuration for the consolidated flight plan
+geomesa.converters.consolidated_flight_plan_xml = {
+  type          = "xml"
+  id-field      = "uuid()"
+  xpath-factory = "net.sf.saxon.xpath.XPathFactoryImpl"
+  options = {
+    line-mode = "single" // "multi" or "single"
+    error-mode = "skip-bad-records" # Skip invalid records
+  }
+  xml-namespaces = {
+    uci = "https://www.vdl.afrl.af.mil/programs/oam"
+  }
+  fields = [
+    # SecurityInformation
+    { name = "classification", path = "/uci:RoutePlan/uci:SecurityInformation/uci:Classification", transform = "trim($0)" }
+    { name = "owner_producer", path = "/uci:RoutePlan/uci:SecurityInformation/uci:OwnerProducer/uci:GovernmentIdentifier", transform = "trim($0)" }
+    # MessageHeader
+    { name = "mode", path = "/uci:RoutePlan/uci:MessageHeader/uci:Mode", transform = "trim($0)" }
+    { name = "system_id_uuid", path = "/uci:RoutePlan/uci:MessageHeader/uci:SystemID/uci:UUID", transform = "trim($0)" }
+    { name = "system_id_desc_label", path = "/uci:RoutePlan/uci:MessageHeader/uci:SystemID/uci:DescriptiveLabel", transform = "trim($0)" }
+    { name = "message_header_ts", path = "/uci:RoutePlan/uci:MessageHeader/uci:Timestamp", transform = "try(date('yyyy-MM-dd\\'T\\'HH:mm:ss.SSSSSSSSS\\'Z\\'', $0),null)" }
+    { name = "service_id_uuid", path = "/uci:RoutePlan/uci:MessageHeader/uci:ServiceID/uci:UUID", transform = "trim($0)" }
+    { name = "service_id_desc_label", path = "/uci:RoutePlan/uci:MessageHeader/uci:ServiceID/uci:DescriptiveLabel", transform = "trim($0)" }
+    # ObjectState
+    { name = "object_state", path = "/uci:RoutePlan/uci:ObjectState", transform = "trim($0)" }
+    # MessageData
+    { name = "uuid", path = "/uci:RoutePlan/uci:MessageData/uci:PlanID/uci:UUID", transform = "trim($0)" }
+    { name = "applicability_uuid", path = "/uci:RoutePlan/uci:MessageData/uci:Plan/uci:Applicability/uci:ApplicableToID/uci:UUID", transform = "trim($0)" }
+    { name = "parts_route_type", path = "/uci:RoutePlan/uci:MessageData/uci:Plan/uci:Parts/uci:RouteType", transform = "trim($0)" }
+    { name = "route_detailed", path = "/uci:RoutePlan/uci:MessageData/uci:Plan/uci:Route/uci:Detailed", transform = "stringToBoolean($0,'false')" }
+    { name = "first_route_path_uuid", path = "/uci:RoutePlan/uci:MessageData/uci:Plan/uci:Route/uci:FirstInRoutePathID/uci:UUID", transform = "trim($0)" }
+    { name = "route_projection", path = "/uci:RoutePlan/uci:MessageData/uci:Plan/uci:Route/uci:RouteProjection", transform = "trim($0)" }
+    { name = "path_uuid", path = "/uci:RoutePlan/uci:MessageData/uci:Plan/uci:Route/uci:Path/uci:PathID/uci:UUID", transform = "trim($0)" }
+    { name = "path_type", path = "/uci:RoutePlan/uci:MessageData/uci:Plan/uci:Route/uci:Path/uci:PathType", transform = "trim($0)" }
+    { name = "airline", path = "/uci:RoutePlan/uci:MessageData/uci:Plan/uci:Route/uci:Airline", transform = "trim($0)" }
+    { name = "for_planning_use_only", path = "/uci:RoutePlan/uci:MessageData/uci:Plan/uci:Route/uci:ForPlanningUseOnly", transform = "stringToBoolean($0,'false')" }
+    # Create a LINESTRING from the lists of coordinates
+    { name = "geometry", transform = "extractLineString(xmlToString($0), 'Latitude', 'Longitude')" }
+    { name = "geometry_axis_swap", transform = "axisSwap($geometry)" }
+    { name = "dtg", path = "/uci:RoutePlan/uci:MessageHeader/uci:Timestamp", transform = "dateTimeVary($0)", default = true, index = true }
+    # Identity
+    { name = "specific_vehicle_type", path = "/uci:RoutePlan/uci:MessageData/uci:Identity/uci:SpecificVehicle/uci:VehicleType", transform = "trim($0)" }
+    { name = "specific_vehicle_confidence", path = "/uci:RoutePlan/uci:MessageData/uci:Identity/uci:SpecificVehicle/uci:Confidence", transform="try($0::double, null)" }
+    { name = "identity_ts", path = "/uci:RoutePlan/uci:MessageData/uci:Identity/uci:IdentityTimestamp", transform = "try(date('yyyy-MM-dd\\'T\\'HH:mm:ss.SSSSSSSSS\\'Z\\'', $0),null)" }
+    # Departure Airfield
+    { name = "departure_airfield_id", path = "/uci:RoutePlan/uci:MessageData/uci:DepartureAirfieldReport/uci:AirfieldID/uci:UUID", transform="trim($0)" }
+    { name = "departure_identity_ref_system_id", path = "/uci:RoutePlan/uci:MessageData/uci:DepartureAirfieldReport/uci:IdentityReferenceID/uci:SystemID/uci:UUID", transform="trim($0)" }
+    { name = "departure_observation_ts", path = "/uci:RoutePlan/uci:MessageData/uci:DepartureAirfieldReport/uci:ObservationTime", transform = "try(date('yyyy-MM-dd\\'T\\'HH:mm:ss.SSSSSSSSS\\'Z\\'', $0),null)" }
+    { name = "departure_icao_code", path = "/uci:RoutePlan/uci:MessageData/uci:DepartureAirfieldReport/uci:Information/uci:ICAO_Code", transform="trim($0)" }
+    # Arrival Airfield
+    { name = "arrival_airfield_id", path = "/uci:RoutePlan/uci:MessageData/uci:ArrivalAirfieldReport/uci:AirfieldID/uci:UUID", transform="trim($0)" }
+    { name = "arrival_identity_ref_system_id", path = "/uci:RoutePlan/uci:MessageData/uci:ArrivalAirfieldReport/uci:IdentityReferenceID/uci:SystemID/uci:UUID", transform="trim($0)" }
+    { name = "arrival_observation_ts", path = "/uci:RoutePlan/uci:MessageData/uci:ArrivalAirfieldReport/uci:ObservationTime", transform = "try(date('yyyy-MM-dd\\'T\\'HH:mm:ss.SSSSSSSSS\\'Z\\'', $0),null)" }
+    { name = "arrival_icao_code", path = "/uci:RoutePlan/uci:MessageData/uci:ArrivalAirfieldReport/uci:Information/uci:ICAO_Code", transform="trim($0)" }
+  ]
+}
+
+

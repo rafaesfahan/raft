@@ -1,0 +1,16 @@
+datamodule:
+  _target_: datamodule.Datamodule
+  all_flight_dataframes_dict: /Users/aleksandranikevich/Desktop/AircraftTrajectory/data/Individual_Flights/
+  num_input_rows_total: 100
+  min_rows_input: 100
+  num_output_rows: 5
+  coordinate_system_enum: ${coordinate_system.coordinate_system.coordinate_system_enum}
+  auxiliary_input_channels: ${coordinate_system.coordinate_system.auxiliary_input_channels}
+  auxiliary_output_channels: ${coordinate_system.coordinate_system.auxiliary_output_channels}
+  train_prop: 0.8
+  batch_size: 32
+  num_workers: 4
+  pin_memory: true
+  break_after: null 
+  limit_dataset: null     # (float or null) Experiment to only use a portion of the training dataset 
+  
