@@ -1,0 +1,93 @@
+import pandas
+import gzip
+import shutil
+import os
+import argparse
+
+# parser = argparse.ArgumentParser(description='Process IFF and RD files')
+# parser.add_argument('--dir', required=True, 
+#                    help='Directory path for input files')
+# parser.add_argument('--iff', required=True,
+#                    help='IFF input filename')
+# parser.add_argument('--rd', required=True,
+#                    help='RD input filename')
+# parser.add_argument('--out', required=True,
+#                    help='Output filename with full path')
+
+# args = parser.parse_args()
+
+# directory_files = args.dir
+# iffFileName = args.iff
+# rdFileName = args.rd
+# outputFileName = args.out
+
+# print(f"\n{directory_files}\n{iffFileName}\n{rdFileName}\n{outputFileName}\n")
+
+# directory_files   = '/raid/mo0dy/tryouts/'
+# iffFileName = 'IFF_USA_20250201_050005_86393_LADDfiltered.csv'
+# rdFileName = 'RD_USA_20250201_050005_86393_LADDfiltered.csv' 
+# outputFileName = '/raid/mo0dy/cleaned/20250201_050005_86393.csv'
+
+directory_files   = '/raid/mo0dy/tryouts/'
+iffFileName = 'IFF_USA_20240622_050000_86398_LADDfiltered.csv'
+rdFileName = 'RD_USA_20240622_050000_86398_LADDfiltered.csv' 
+outputFileName = '/raid/mo0dy/cleaned/20250201_050005_86393.csv'
+
+iffFileName_dir = f'{directory_files}{iffFileName}'
+rdFileName_dir = f'{directory_files}{rdFileName}'
+
+def decompress_and_replace_file(file_path):
+    if file_path.endswith('.csv.gz'):
+        decompressed_file_path = file_path.replace('.gz', '')
+
+        with gzip.open(file_path, 'rb') as f_in:
+            with open(decompressed_file_path, 'wb') as f_out:
+                shutil.copyfileobj(f_in, f_out)
+
+        os.remove(file_path)
+        return decompressed_file_path
+    else:
+        return file_path
+
+def readRdFile(rdFileName_dir):
+    result = pandas.read_csv(rdFileName_dir, usecols=["Msn", "Orig", "EstOrig", "Dest", "EstDest"])
+    msnVals = [] 
+    for i in range(result['Msn'].size):
+        msnVals.append(result['Msn'][i])
+    return msnVals
+
+def getMergedCsvFile(flightKeys):
+    dictToTurnIntoDataFrame = {'fltKey': [], 'Time': [], 'Latitude': [],
+                               'Longitude': [], 'Altitude': [], 'RecTypeCat': [],
+                               'Significance': [], 'GroundSpeed': [], 'FlightCourse': []}
+    iffFile = open(iffFileName_dir)
+
+    counter = 0
+    while 1:
+        print(f"\nIteration: {counter}\n")
+        counter+=1
+        lines = iffFile.readlines(50_000_000)
+        if not lines:
+            break
+        for line in lines:
+            iffWrite = line.split(",")
+            if iffWrite[0] == "3" and int(iffWrite[2]) in flightKeys:
+                dictToTurnIntoDataFrame['fltKey'].append(iffWrite[2]) 
+                dictToTurnIntoDataFrame['Time'].append(int(float(iffWrite[1])))
+                dictToTurnIntoDataFrame['Latitude'].append(float(iffWrite[9]))
+                dictToTurnIntoDataFrame['Longitude'].append(float(iffWrite[10]))
+                dictToTurnIntoDataFrame['Altitude'].append(float(iffWrite[11]))
+                dictToTurnIntoDataFrame['RecTypeCat'].append(iffWrite[8])
+                dictToTurnIntoDataFrame['Significance'].append(iffWrite[12])
+                dictToTurnIntoDataFrame['GroundSpeed'].append(iffWrite[16])
+                dictToTurnIntoDataFrame['FlightCourse'].append(iffWrite[17]) 
+    iffFile.close()
+
+    df = pandas.DataFrame(dictToTurnIntoDataFrame, columns=['fltKey', 'Time', 'Latitude', 
+                                                            'Longitude','Altitude', 'RecTypeCat', 
+                                                            'Significance','GroundSpeed', 'FlightCourse'])
+    df.to_csv(outputFileName, index=None, header=True) 
+    return df.head(15)
+
+msnVals = readRdFile(rdFileName_dir)
+getMergedCsvFile(msnVals)

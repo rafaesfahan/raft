@@ -1,0 +1,13 @@
+pandas
+tqdm
+torch-lightning
+torch
+scipy
+folium
+matplotlib
+selenium
+conda-forge::coiled
+scikit-learn
+fastapi
+condaforge::omegaconf
+conda-forge::hydra

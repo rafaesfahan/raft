@@ -11,7 +11,11 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "justMyCode": false
+            "justMyCode": false,
+            "args": ["--dir", "/raid/mo0dy/tryouts/",
+            "--iff", "IFF_USA_ 20250201_050005_86393_LADDfiltered.csv",
+            "--rd" ,"RD_USA_20250201_050005_86393_LADDfiltered.csv",
+            "--out", "/raid/mo0dy/cleaned/20250201"]
         }
     ]
 }
